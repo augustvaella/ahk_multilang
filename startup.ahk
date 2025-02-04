@@ -8,8 +8,10 @@
 v_is_default = 1   ; no Input on Update
 v_lang = 
 v_is_inputable = 0 ; reentrant flag on Update
-v_output = ""      ; output on Input
+v_output =         ; output on Input
+v_output_count = 0
 v_is_send = 0      ; send as input On Input
+v_max_letter_input = 10   ; 
 v_path_icon_normal = %A_ScriptDir%\normal.ico
 v_path_icon_suspended = %A_ScriptDir%\suspended.ico
 
@@ -21,8 +23,11 @@ Menu, Tray, Standard
 
 Menu, Tray, Default, Default
 
+GoSub, MenuLangDefault
 GoSub, ChangeIcon
 SetTimer, Update, 300
+
+F1::GoSub, MenuLangHangul
 
 Return
 
@@ -56,6 +61,7 @@ MenuLangHangul:
 Input
 v_is_default = 0
 v_lang = hangul
+v_max_letter_input = 7
 v_path_icon_normal = %A_ScriptDir%\hangul\normal.ico
 v_path_icon_suspended = %A_ScriptDir%\hangul\suspended.ico
 Menu, Tray, Uncheck, Default
@@ -79,7 +85,9 @@ EnableInput:
 v_is_inputable = 1
 v_is_send = 0
 
-Input, v_output, C L3 T1 V, {SPACE}{ENTER}
+Input, v_output, C L%v_max_letter_input% , {ESC}{SPACE}{ENTER}{TAB}
+StringLen, v_output_count, v_output
+;MsgBox, input %v_output% %ErrorLevel%
 
 If (ErrorLevel = 0 or ErrorLevel = 1)
   GoSub, OnInputInterrupted
@@ -93,6 +101,8 @@ IfInString, ErrorLevel, EndKey:
   GoSub, OnInputEndKey
 If ErrorLevel = Match
   GoSub, OnInputMatch
+
+;MsgBox, v_is_send=%v_is_send%
 
 If v_is_send = 1
   GoSub, OnInputVar
@@ -114,11 +124,10 @@ Return
 
 
 OnInputTimeout:
-StringLen, _v, v_output
 ;MsgBox, input timeout
-If _v > 0
-  ;MsgBox, input timeout %v_output%
-  v_is_sent = 1
+If v_output_count > 0
+  ;MsgBox, input timeout _v>0 %v_output%
+  v_is_send = 1
 Return
 
 
@@ -128,18 +137,25 @@ Return
 
 
 OnInputEndKey:
-StringLen, _v, v_output
 ;MsgBox, input endkey %ErrorLevel% %v_output% %_v%
-If _v > 0
-  v_is_sent = 1
+IfInString, ErrorLevel, ESC
+{
+  Gosub, MenuLangDefault
+  Return
+}
+
+If v_output_count > 0
+  v_is_send = 1
 Else
 {
-  IfInString, ErrorLevel, SPACE
-    Return
-    ;Send, {SPACE}
-  IfInString, ErrorLevel, ENTER
-    Return
-    ;Send, {ENTER}
+  IfInString, ErrorLevel, ESC
+    Send, {ESC}
+  Else IfInString, ErrorLevel, SPACE
+    Send, {SPACE}
+  Else IfInString, ErrorLevel, ENTER
+    Send, {ENTER}
+  Else IfInString, ErrorLevel, TAB
+    Send, {TAB}
 }
 Return
 
